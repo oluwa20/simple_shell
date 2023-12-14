@@ -1,51 +1,74 @@
-#include "shell.h"
+#include "main.h"
 
 /**
- * main - Entry point to program
- * @argc: Argument count
- * @argv: Argument vector
- * Return: Returns condition
+ * free_data - frees data structure
+ *
+ * @datash: data structure
+ * Return: no return
  */
-int main(__attribute__((unused)) int argc, char **argv)
+void free_data(data_shell *datash)
 {
-char *input, **cmd, **commands;
-int count = 0, i, condition = 1, stat = 0;
+unsigned int i;
 
-if (argv[1] != NULL)
-read_file(argv[1], argv);
-signal(SIGINT, signal_to_handle);
-while (condition)
+for (i = 0; datash->_environ[i]; i++)
 {
-count++;
-if (isatty(STDIN_FILENO))
-prompt();
-input = _getline();
-if (input[0] == '\0')
-continue;
-history(input);
-commands = separator(input);
-for (i = 0; commands[i] != NULL; i++)
+free(datash->_environ[i]);
+}
+
+free(datash->_environ);
+free(datash->pid);
+}
+
+/**
+ * set_data - Initialize data structure
+ *
+ * @datash: data structure
+ * @av: argument vector
+ * Return: no return
+ */
+void set_data(data_shell *datash, char **av)
 {
-cmd = parse_cmd(commands[i]);
-if (_strcmp(cmd[0], "exit") == 0)
+unsigned int i;
+
+datash->av = av;
+datash->input = NULL;
+datash->args = NULL;
+datash->status = 0;
+datash->counter = 1;
+
+for (i = 0; environ[i]; i++)
+;
+
+datash->_environ = malloc(sizeof(char *) * (i + 1));
+
+for (i = 0; environ[i]; i++)
 {
-free(commands);
-exit_bul(cmd, input, argv, count, stat);
+datash->_environ[i] = _strdup(environ[i]);
 }
-else if (check_builtin(cmd) == 0)
+
+datash->_environ[i] = NULL;
+datash->pid = aux_itoa(getpid());
+}
+
+/**
+ * main - Entry point
+ *
+ * @ac: argument count
+ * @av: argument vector
+ *
+ * Return: 0 on success.
+ */
+int main(int ac, char **av)
 {
-stat = handle_builtin(cmd, stat);
-free(cmd);
-continue;
-}
-else
-stat = check_cmd(cmd, input, count, argv);
-free(cmd);
-}
-free(input);
-free(commands);
-wait(&stat);
-}
-return (stat);
+data_shell datash;
+(void) ac;
+
+signal(SIGINT, get_sigint);
+set_data(&datash, av);
+shell_loop(&datash);
+free_data(&datash);
+if (datash.status < 0)
+return (255);
+return (datash.status);
 }
 
